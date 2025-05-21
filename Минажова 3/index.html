@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Калькулятор кредита</title>
+<style>
+  :root {
+    --primary-color: #004aad;
+    --accent-color: #f39c12;
+    --bg-color: #f5f7fa;
+    --text-color: #333;
+    --error-color: #e74c3c;
+    --success-color: #27ae60;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg-color);
+    font-family: var(--font-family);
+    margin: 0; padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .loan-calculator {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem 3rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 12px 30px rgb(0 0 0 / 0.12);
+    display: grid;
+    grid-gap: 1.5rem;
+  }
+  .loan-calculator h1 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+  label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  input[type="number"], input[type="range"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+  }
+  input[type="number"]:focus, input[type="range"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px var(--primary-color);
+  }
+  .range-value {
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-left: 0.5rem;
+  }
+  .result {
+    background: #e8f0fe;
+    border: 2px solid var(--primary-color);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    user-select: none;
+  }
+  button {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  button:hover:not(:disabled) {
+    background: var(--accent-color);
+    color: var(--primary-color);
+    font-weight: 700;
+  }
+  button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    color: var(--error-color);
+    font-size: 0.875rem;
+    font-weight: 600;
+    min-height: 1.2em;
+  }
+  .advanced-settings {
+    border-top: 1px solid #ddd;
+    padding-top: 1rem;
+    font-size: 0.9rem;
+    color: #555;
+  }
+</style>
+</head>
+<body>
+  <form class="loan-calculator" novalidate>
+    <h1>Калькулятор кредита</h1>
+
+    <div>
+      <label for="amount">Сумма кредита (₽)</label>
+      <input type="number" id="amount" name="amount" min="10000" max="10000000" step="1000" required aria-describedby="amountError" />
+      <div id="amountError" class="error-msg" aria-live="polite"></div>
+    </div>
+
+    <div>
+      <label for="term">Срок кредита (месяцев) <span class="range-value" id="termValue">12</span></label>
+      <input type="range" id="term" name="term" min="6" max="360" step="1" value="12" aria-describedby="termValue" />
+    </div>
+
+    <div>
+      <label for="rate">Годовая процентная ставка (%)</label>
+      <input type="number" id="rate" name="rate" min="0.1" max="40" step="0.01" required aria-describedby="rateError" />
+      <div id="rateError" class="error-msg" aria-live="polite"></div>
+    </div>
+
+    <div class="advanced-settings">
+      <label for="paymentType">Тип платежа</label>
+      <select id="paymentType" name="paymentType" aria-label="Выбор типа платежа">
+        <option value="annuity" selected>Аннуитетный (равные платежи)</option>
+        <option value="differentiated">Дифференцированный (платеж уменьшается)</option>
+      </select>
+    </div>
+
+    <button type="submit" id="calculateBtn">Рассчитать</button>
+
+    <output id="result" role="region" aria-live="polite" class="result" tabindex="0" aria-label="Результат расчета кредита"></output>
+  </form>
+
+<script>
+(() => {
+  'use strict';
+
+  const form = document.querySelector('.loan-calculator');
+  const amountInput = form.amount;
+  const termInput = form.term;
+  const rateInput = form.rate;
+  const paymentTypeSelect = form.paymentType;
+  const resultOutput = form.querySelector('#result');
+  const amountError = form.querySelector('#amountError');
+  const rateError = form.querySelector('#rateError');
+  const termValueSpan = form.querySelector('#termValue');
+
+  // Update range label dynamically
+  termInput.addEventListener('input', () => {
+    termValueSpan.textContent = termInput.value;
+  });
+
+  // Validation helpers
+  function validateAmount() {
+    const val = Number(amountInput.value);
+    if (!val || val < 10000 || val > 10000000) {
+      amountError.textContent = 'Введите сумму от 10 000 до 10 000 000 ₽';
+      return false;
+    }
+    amountError.textContent = '';
+    return true;
+  }
+  function validateRate() {
+    const val = Number(rateInput.value);
+    if (!val || val < 0.1 || val > 40) {
+      rateError.textContent = 'Введите ставку от 0.1% до 40%';
+      return false;
+    }
+    rateError.textContent = '';
+    return true;
+  }
+
+  // Format currency in Russian Ruble
+  function formatCurrency(amount) {
+    return amount.toLocaleString('ru-RU', {style: 'currency', currency: 'RUB', minimumFractionDigits: 2});
+  }
+
+  // Calculate annuity monthly payment
+  function calcAnnuityPayment(principal, monthlyRate, months) {
+    if (monthlyRate === 0) return principal / months;
+    return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+  }
+
+  // Calculate differentiated payments array
+  function calcDifferentiatedPayments(principal, monthlyRate, months) {
+    const payments = [];
+    const principalPayment = principal / months;
+    for(let m = 0; m < months; m++) {
+      const interest = (principal - principalPayment * m) * monthlyRate;
+      payments.push(principalPayment + interest);
+    }
+    return payments;
+  }
+
+  // Event submit handler
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+
+    const validAmount = validateAmount();
+    const validRate = validateRate();
+
+    if (!validAmount || !validRate) {
+      resultOutput.textContent = '';
+      return;
+    }
+
+    const principal = Number(amountInput.value);
+    const months = Number(termInput.value);
+    const annualRate = Number(rateInput.value);
+    const monthlyRate = annualRate / 100 / 12;
+    const paymentType = paymentTypeSelect.value;
+
+    if (paymentType === 'annuity') {
+      const monthlyPayment = calcAnnuityPayment(principal, monthlyRate, months);
+      const totalPayment = monthlyPayment * months;
+      const overpayment = totalPayment - principal;
+
+      resultOutput.innerHTML = `
+        Ежемесячный платеж: <strong>${formatCurrency(monthlyPayment)}</strong><br/>
+        Общая сумма выплат: <strong>${formatCurrency(totalPayment)}</strong><br/>
+        Переплата по процентам: <strong>${formatCurrency(overpayment)}</strong>
+      `;
+    } else if (paymentType === 'differentiated') {
+      const payments = calcDifferentiatedPayments(principal, monthlyRate, months);
+      const totalPayment = payments.reduce((a,b) => a+b, 0);
+      const overpayment = totalPayment - principal;
+      const firstPayment = payments[0];
+      const lastPayment = payments[payments.length - 1];
+
+      // Generate summary & details
+      let detailsList = '<ul style="text-align:left; max-height:150px; overflow:auto; padding-left:1rem; margin-top:0.5rem; border:1px solid #ccc; border-radius:6px;">';
+      payments.forEach((p, i) => {
+        detailsList += `<li>Месяц ${i+1}: ${formatCurrency(p)}</li>`;
+      });
+      detailsList += '</ul>';
+
+      resultOutput.innerHTML = `
+        Первый платеж: <strong>${formatCurrency(firstPayment)}</strong><br/>
+        Последний платеж: <strong>${formatCurrency(lastPayment)}</strong><br/>
+        Общая сумма выплат: <strong>${formatCurrency(totalPayment)}</strong><br/>
+        Переплата по процентам: <strong>${formatCurrency(overpayment)}</strong>
+        <details style="margin-top:1rem;">
+          <summary>Все платежи по месяцам</summary>
+          ${detailsList}
+        </details>
+      `;
+    }
+    resultOutput.focus();
+  });
+
+  // Real-time validation
+  amountInput.addEventListener('input', validateAmount);
+  rateInput.addEventListener('input', validateRate);
+})();
+</script>
+</body>
+</html>

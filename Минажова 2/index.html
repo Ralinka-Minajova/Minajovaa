@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calculate Cost</title>
+<style>
+  :root {
+    --primary-color: #2a9d8f;
+    --secondary-color: #264653;
+    --accent-color: #e76f51;
+    --bg-color: #f4f4f9;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg-color);
+    font-family: var(--font-family);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .calculator {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    width: 360px;
+    box-shadow:
+      0 2px 10px rgba(0,0,0,0.1),
+      0 10px 30px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .calculator h2 {
+    margin: 0 0 1rem 0;
+    color: var(--secondary-color);
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.75rem;
+  }
+
+  label {
+    font-weight: 600;
+    color: var(--secondary-color);
+    display: block;
+    margin-bottom: 0.3rem;
+    user-select: none;
+  }
+
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    font-size: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+    outline-offset: 2px;
+  }
+
+  input[type="number"]:focus,
+  select:focus {
+    border-color: var(--primary-color);
+  }
+
+  .row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .row > div {
+    flex: 1;
+  }
+
+  .result {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 700;
+    font-size: 1.5rem;
+    text-align: center;
+    padding: 1rem 0;
+    border-radius: 8px;
+    user-select: none;
+    box-shadow: 0 4px 8px rgba(42,157,143,0.4);
+  }
+
+  button {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 0;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+
+  button:hover {
+    background: #d65a3b;
+  }
+
+  .footer {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: center;
+    margin-top: 0.5rem;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+  <form class="calculator" id="costCalc" novalidate>
+    <h2>Calculate Cost</h2>
+
+    <label for="quantity">Quantity</label>
+    <input type="number" id="quantity" name="quantity" min="1" value="1" required />
+
+    <label for="unitPrice">Unit Price ($)</label>
+    <input type="number" id="unitPrice" name="unitPrice" min="0" step="0.01" value="0" required />
+
+    <div class="row">
+      <div>
+        <label for="taxRate">Tax Rate (%)</label>
+        <input type="number" id="taxRate" name="taxRate" min="0" max="100" step="0.01" value="0" required />
+      </div>
+      <div>
+        <label for="discount">Discount (%)</label>
+        <input type="number" id="discount" name="discount" min="0" max="100" step="0.01" value="0" required />
+      </div>
+    </div>
+
+    <label for="shipping">Shipping Cost ($)</label>
+    <input type="number" id="shipping" name="shipping" min="0" step="0.01" value="0" required />
+
+    <button type="submit">Calculate</button>
+
+    <output class="result" id="totalCost" aria-live="polite" aria-atomic="true">Total: $0.00</output>
+
+    <div class="footer">
+      Enter your values and press Calculate to get the total cost.
+    </div>
+  </form>
+
+<script>
+  (() => {
+    const form = document.getElementById('costCalc');
+    const totalCostOutput = document.getElementById('totalCost');
+
+    // Format a number as USD currency
+    const formatCurrency = (num) => {
+      return num.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    };
+
+    // Validate input fields and return sanitized values or null if invalid
+    const getValidatedInput = (input) => {
+      const val = parseFloat(input.value);
+      if (isNaN(val)) return null;
+      if (input.hasAttribute('min') && val < parseFloat(input.min)) return null;
+      if (input.hasAttribute('max') && val > parseFloat(input.max)) return null;
+      return val;
+    };
+
+    // Calculate total cost based on inputs
+    // Formula:
+    // subtotal = quantity * unitPrice
+    // discountAmount = subtotal * discount%
+    // taxedAmount = (subtotal - discountAmount) * taxRate%
+    // total = subtotal - discountAmount + taxedAmount + shipping
+    const calculateTotalCost = ({quantity, unitPrice, taxRate, discount, shipping}) => {
+      const subtotal = quantity * unitPrice;
+      const discountAmount = subtotal * (discount / 100);
+      const taxedAmount = (subtotal - discountAmount) * (taxRate / 100);
+      return subtotal - discountAmount + taxedAmount + shipping;
+    };
+
+    // Handle form submission
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      // Gather and validate input values
+      const quantity = getValidatedInput(form.quantity);
+      const unitPrice = getValidatedInput(form.unitPrice);
+      const taxRate = getValidatedInput(form.taxRate);
+      const discount = getValidatedInput(form.discount);
+      const shipping = getValidatedInput(form.shipping);
+
+      // If any input is invalid, show error and return
+      if ([quantity, unitPrice, taxRate, discount, shipping].some(v => v === null)) {
+        totalCostOutput.textContent = 'Please enter valid values for all fields.';
+        totalCostOutput.style.color = 'var(--accent-color)';
+        return;
+      }
+
+      // Calculate total cost
+      const total = calculateTotalCost({quantity, unitPrice, taxRate, discount, shipping});
+
+      // Display formatted total cost
+      totalCostOutput.textContent = `Total: ${formatCurrency(total)}`;
+      totalCostOutput.style.color = 'white';
+    });
+  })();
+</script>
+</body>
+</html>
